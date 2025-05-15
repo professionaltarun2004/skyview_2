@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "46361936475",
+    "firebase_url": "https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "joystick-dc535",
+    "storage_bucket": "joystick-dc535.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:46361936475:android:2f2743519d78ba1f51f57e",
+        "android_client_info": {
+          "package_name": "com.DefaultCompany.My_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzgHCPuRoWu1LeUqSJuueyzrrsb3BbSAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:46361936475:android:5a239a4fb9f9aebc51f57e",
+        "android_client_info": {
+          "package_name": "com.example.good_doctor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzgHCPuRoWu1LeUqSJuueyzrrsb3BbSAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:46361936475:android:7d3aa68ce954307c51f57e",
+        "android_client_info": {
+          "package_name": "com.example.skyview_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzgHCPuRoWu1LeUqSJuueyzrrsb3BbSAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
