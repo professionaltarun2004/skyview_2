@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -10,33 +11,33 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  late GoogleMapController _mapController;
-  final LatLng _initialPosition = const LatLng(20.5937, 78.9629); // Center of India
+  final LatLng _initialPosition = LatLng(20.5937, 78.9629); // Center of India
+  MapController? _mapController;
   
   final List<Map<String, dynamic>> _popularDestinations = [
     {
       'name': 'Goa',
       'image': 'assets/images/goa.jpg',
       'description': 'Beaches, nightlife, and relaxation',
-      'position': const LatLng(15.2993, 74.1240),
+      'position': LatLng(15.2993, 74.1240),
     },
     {
       'name': 'Kerala',
       'image': 'assets/images/kerala.jpg',
       'description': 'Backwaters, hills, and culture',
-      'position': const LatLng(10.1632, 76.6413),
+      'position': LatLng(10.1632, 76.6413),
     },
     {
       'name': 'Rajasthan',
       'image': 'assets/images/rajasthan.jpg',
       'description': 'Forts, palaces, and desert adventures',
-      'position': const LatLng(27.0238, 74.2179),
+      'position': LatLng(27.0238, 74.2179),
     },
     {
       'name': 'Shimla',
       'image': 'assets/images/shimla.jpg',
       'description': 'Hill station with scenic views',
-      'position': const LatLng(31.1048, 77.1734),
+      'position': LatLng(31.1048, 77.1734),
     },
   ];
   
@@ -181,14 +182,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          _mapController.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(
-                target: _initialPosition,
-                zoom: 4,
-              ),
-            ),
-          );
+          if (_mapController != null) {
+            _mapController!.move(_initialPosition, 5);
+          }
         },
         mini: true,
         child: const Icon(Icons.my_location),
@@ -202,6 +198,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         onTap: () {
           setState(() {
             _isMapLoaded = true;
+            _mapController = MapController();
           });
         },
         child: Container(
@@ -223,18 +220,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
     
     return SizedBox(
       height: 200,
-      child: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _initialPosition,
-          zoom: 4,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          center: _initialPosition,
+          zoom: 5,
+          interactiveFlags: InteractiveFlag.all,
         ),
-        onMapCreated: (controller) {
-          _mapController = controller;
-        },
-        myLocationEnabled: true,
-        myLocationButtonEnabled: false,
-        zoomControlsEnabled: false,
-        mapToolbarEnabled: false,
+        children: [
+          TileLayer(
+            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            subdomains: ['a', 'b', 'c'],
+            userAgentPackageName: 'com.example.skyview_2',
+          ),
+          MarkerLayer(
+            markers: _popularDestinations.map((destination) {
+              return Marker(
+                width: 40,
+                height: 40,
+                point: destination['position'],
+                child: const Icon(Icons.location_on, color: Colors.red, size: 32),
+              );
+            }).toList().cast<Marker>(),
+          ),
+        ],
       ),
     );
   }
@@ -242,14 +251,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget _buildDestinationCard(Map<String, dynamic> destination) {
     return GestureDetector(
       onTap: () {
-        _mapController.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: destination['position'],
-              zoom: 10,
-            ),
-          ),
-        );
+        if (_mapController != null) {
+          _mapController!.move(destination['position'], 10);
+        }
       },
       child: Container(
         width: 160,
@@ -267,14 +271,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
                     ),
-                    child: Container(
+                    child: Image.asset(
+                      destination['image'],
                       height: 100,
                       width: double.infinity,
-                      color: Colors.grey[300],
-                      // Using placeholder color as we don't have actual images
-                      child: const Center(
-                        child: Icon(Icons.landscape, size: 40),
-                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 100,
+                          width: double.infinity,
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: Icon(Icons.landscape, size: 40),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   Positioned(

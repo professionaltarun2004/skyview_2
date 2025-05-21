@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;  // 5MB max
+    }
+    
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf')
+        && request.resource.size < 10 * 1024 * 1024;  // 10MB max
+    }
+
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isValidImage();
+    }
+    
+    // Flight images
+    match /flights/{flightId}/{fileName} {
+      allow read: if true;
+      allow write: if false;  // Only admin can write
+    }
+    
+    // Booking documents
+    match /bookings/{bookingId}/{fileName} {
+      allow read: if isOwner(request.auth.uid);
+      allow write: if isOwner(request.auth.uid) && isValidDocument();
+    }
+    
+    // Location images
+    match /locations/{locationId}/{fileName} {
+      allow read: if true;
+      allow write: if false;  // Only admin can write
+    }
+  }
+} 

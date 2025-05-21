@@ -40,9 +40,9 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
       
       await _voiceService.startListening((command) {
         setState(() {
-          _lastCommand = command;
+          _lastCommand = command as String;
         });
-        _processVoiceCommand(command);
+        _processVoiceCommand(command as String);
       });
     } else {
       setState(() {

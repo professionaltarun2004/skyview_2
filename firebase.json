@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"joystick-dc535","appId":"1:46361936475:android:7d3aa68ce954307c51f57e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"joystick-dc535","configurations":{"android":"1:46361936475:android:7d3aa68ce954307c51f57e","web":"1:46361936475:web:08c4860078938cd751f57e","windows":"1:46361936475:web:fadbc81863034c4851f57e"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "backend",
+    "runtime": "python311",
+    "ignore": [
+      "venv",
+      ".git",
+      ".github",
+      "__pycache__",
+      "*.pyc"
+    ]
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "app"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

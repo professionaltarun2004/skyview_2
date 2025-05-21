@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidFlightData() {
+      return request.resource.data.keys().hasAll([
+        'airlineName', 'flightNumber', 'departureCity', 'arrivalCity',
+        'departureTime', 'arrivalTime', 'price', 'availableSeats',
+        'travelClasses', 'amenities', 'status'
+      ]);
+    }
+    
+    function isValidBookingData() {
+      return request.resource.data.keys().hasAll([
+        'user_id', 'flight_id', 'passengers', 'travelClass',
+        'totalPrice', 'status'
+      ]);
+    }
+
+    // Flights collection
+    match /flights/{flightId} {
+      allow read: if true;  // Public read access
+      allow write: if false;  // Only admin can write (through backend)
+    }
+    
+    // Bookings collection
+    match /bookings/{bookingId} {
+      allow read: if isOwner(resource.data.user_id);
+      allow create: if isAuthenticated() && isValidBookingData();
+      allow update: if isOwner(resource.data.user_id);
+      allow delete: if isOwner(resource.data.user_id);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+    
+    // Conversations collection (for AI chat)
+    match /conversations/{conversationId} {
+      allow read: if isOwner(resource.data.user_id);
+      allow create: if isAuthenticated();
+      allow update, delete: if isOwner(resource.data.user_id);
+    }
+    
+    // Locations collection (for recommendations)
+    match /locations/{locationId} {
+      allow read: if true;  // Public read access
+      allow write: if false;  // Only admin can write
+    }
+  }
+} 

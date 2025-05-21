@@ -1,5 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -8,64 +9,164 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   bool _isLoading = false;
 
-  User? get user => _user;
-  bool get isLoading => _isLoading;
-  bool get isLoggedIn => _user != null;
-
   AuthProvider() {
+    _initAuth();
+  }
+
+  User? get user => _user;
+  bool get isLoggedIn => _user != null;
+  bool get isLoading => _isLoading;
+
+  Future<void> _initAuth() async {
     _auth.authStateChanges().listen((User? user) {
       _user = user;
       notifyListeners();
     });
   }
 
-  Future<void> signInWithEmailAndPassword(String email, String password) async {
+  Future<Map<String, dynamic>> signIn(String email, String password) async {
     try {
       _isLoading = true;
       notifyListeners();
-      
-      await _auth.signInWithEmailAndPassword(
+
+      // Sign in with Firebase
+      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-    } finally {
+      
+      _user = userCredential.user;
+      
+      // Store auth token
+      final prefs = await SharedPreferences.getInstance();
+      final token = await _user?.getIdToken();
+      if (token != null) {
+        await prefs.setString('userToken', token);
+      }
+      
       _isLoading = false;
       notifyListeners();
+      return {'success': true};
+    } on FirebaseAuthException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {
+        'success': false,
+        'code': e.code,
+        'message': _getErrorMessage(e.code),
+      };
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred. Please try again.',
+      };
     }
   }
 
-  Future<void> registerWithEmailAndPassword(
-    String email, 
-    String password, 
-    String name,
-    String phone,
-  ) async {
+  Future<Map<String, dynamic>> signUp(String name, String email, String password) async {
     try {
       _isLoading = true;
       notifyListeners();
-      
-      final userCredential = await _auth.createUserWithEmailAndPassword(
+
+      // Create user with Firebase
+      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       
-      // Save additional user data to Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+      _user = userCredential.user;
+      
+      // Update user display name
+      await _user?.updateDisplayName(name);
+      
+      // Create user document in Firestore
+      await _firestore.collection('users').doc(_user?.uid).set({
         'name': name,
         'email': email,
-        'phone': phone,
         'createdAt': FieldValue.serverTimestamp(),
+        'preferences': {
+          'notifications': true,
+          'darkMode': false,
+        },
       });
       
-      // Update user profile
-      await userCredential.user!.updateDisplayName(name);
-    } finally {
+      // Store auth token
+      final prefs = await SharedPreferences.getInstance();
+      final token = await _user?.getIdToken();
+      if (token != null) {
+        await prefs.setString('userToken', token);
+      }
+      
       _isLoading = false;
       notifyListeners();
+      return {'success': true};
+    } on FirebaseAuthException catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {
+        'success': false,
+        'code': e.code,
+        'message': _getErrorMessage(e.code),
+      };
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred. Please try again.',
+      };
     }
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('userToken');
+      _user = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error signing out: $e');
+    }
+  }
+
+  Future<bool> resetPassword(String email) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      await _auth.sendPasswordResetEmail(email: email);
+      
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  String _getErrorMessage(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'No user found with this email address.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'email-already-in-use':
+        return 'This email is already registered.';
+      case 'weak-password':
+        return 'Password is too weak. Please use a stronger password.';
+      case 'invalid-email':
+        return 'The email address is invalid.';
+      case 'operation-not-allowed':
+        return 'This operation is not allowed.';
+      case 'too-many-requests':
+        return 'Too many requests. Please try again later.';
+      default:
+        return 'An error occurred. Please try again.';
+    }
   }
 } 

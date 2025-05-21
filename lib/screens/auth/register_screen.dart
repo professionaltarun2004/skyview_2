@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:skyview_2/providers/auth_provider.dart';
 import 'package:skyview_2/screens/home_screen.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
+import 'package:skyview_2/utils/error_handler.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -20,6 +23,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
 
   @override
   void dispose() {
@@ -34,24 +40,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _register() async {
     if (_formKey.currentState!.validate()) {
       try {
-        await Provider.of<AuthProvider>(context, listen: false)
-            .registerWithEmailAndPassword(
+        final result = await Provider.of<AuthProvider>(context, listen: false)
+            .signUp(
+          _nameController.text.trim(),
           _emailController.text.trim(),
           _passwordController.text,
-          _nameController.text.trim(),
-          _phoneController.text.trim(),
         );
         
         if (!mounted) return;
         
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        if (result['success']) {
+          // Save phone number to user document
+          final currentUser = _auth.currentUser;
+          if (currentUser != null) {
+            await _firestore.collection('users').doc(currentUser.uid).update({
+              'phone': _phoneController.text.trim(),
+            });
+          }
+          
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Registration failed')),
+          );
+        }
       } catch (e) {
         if (!mounted) return;
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+        ErrorHandler.showErrorSnackBar(
+          context, 
+          ErrorHandler.getUserFriendlyError(e),
         );
       }
     }

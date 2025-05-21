@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:skyview_2/providers/auth_provider.dart';
 import 'package:skyview_2/providers/theme_provider.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
+import 'package:skyview_2/services/booking_service.dart';
+import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -67,7 +69,7 @@ class ProfileScreen extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.edit),
                     onPressed: () {
-                      // TODO: Navigate to edit profile screen
+                      Navigator.of(context).pushNamed('/edit_profile');
                     },
                   ),
                 ],
@@ -87,28 +89,57 @@ class ProfileScreen extends StatelessWidget {
             
             const SizedBox(height: 12),
             
-            SnapCard(
-              child: Column(
-                children: [
-                  _buildBookingItem(
-                    context,
-                    origin: 'Delhi',
-                    destination: 'Mumbai',
-                    date: '24 Jun 2024',
-                    status: 'Upcoming',
-                    statusColor: Colors.green,
+            FutureBuilder<List<Booking>>(
+              future: BookingService().getBookings(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No bookings found. Book your next flight!'),
+                  );
+                }
+                final bookings = snapshot.data!;
+                return SnapCard(
+                  child: Column(
+                    children: bookings.map((booking) {
+                      final flight = booking.flight;
+                      final date = DateFormat('dd MMM yyyy').format(flight.departureTime);
+                      final status = booking.status.toString().split('.').last;
+                      Color statusColor;
+                      switch (booking.status) {
+                        case BookingStatus.confirmed:
+                          statusColor = Colors.green;
+                          break;
+                        case BookingStatus.completed:
+                          statusColor = Colors.grey;
+                          break;
+                        case BookingStatus.cancelled:
+                          statusColor = Colors.red;
+                          break;
+                        case BookingStatus.pending:
+                        default:
+                          statusColor = Colors.orange;
+                      }
+                      return Column(
+                        children: [
+                          _buildBookingItem(
+                            context,
+                            origin: flight.departureCity,
+                            destination: flight.arrivalCity,
+                            date: date,
+                            status: status[0].toUpperCase() + status.substring(1),
+                            statusColor: statusColor,
+                          ),
+                          const Divider(),
+                        ],
+                      );
+                    }).toList(),
                   ),
-                  const Divider(),
-                  _buildBookingItem(
-                    context,
-                    origin: 'Mumbai',
-                    destination: 'Bangalore',
-                    date: '15 May 2024',
-                    status: 'Completed',
-                    statusColor: Colors.grey,
-                  ),
-                ],
-              ),
+                );
+              },
             ),
             
             const SizedBox(height: 24),
@@ -133,7 +164,7 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: const Text('Window'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // TODO: Navigate to seat preference screen
+                      Navigator.of(context).pushNamed('/seat_preference');
                     },
                   ),
                   const Divider(height: 1),
@@ -143,7 +174,7 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: const Text('Vegetarian'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // TODO: Navigate to meal preference screen
+                      Navigator.of(context).pushNamed('/meal_preference');
                     },
                   ),
                   const Divider(height: 1),
@@ -153,7 +184,24 @@ class ProfileScreen extends StatelessWidget {
                     subtitle: const Text('2 cards saved'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
-                      // TODO: Navigate to payment methods screen
+                      Navigator.of(context).pushNamed('/payment_methods');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.quiz),
+                    title: const Text('Take Travel Quiz'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).pushNamed('/quiz');
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.feedback),
+                    title: const Text('Give Feedback'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).pushNamed('/feedback');
                     },
                   ),
                 ],

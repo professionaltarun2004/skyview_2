@@ -3,6 +3,9 @@ import 'package:skyview_2/models/chat_message.dart';
 import 'package:skyview_2/services/voice_service.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:skyview_2/services/api_service.dart';
+import 'package:skyview_2/utils/error_handler.dart';
 
 class AIChatScreen extends StatefulWidget {
   const AIChatScreen({super.key});
@@ -63,31 +66,56 @@ class _AIChatScreenState extends State<AIChatScreen> {
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
-    
     _messageController.clear();
     _addMessage(message, MessageType.user);
-    
     setState(() {
       _isLoading = true;
     });
-    
     try {
-      // TODO: Replace with actual API call to Gemini
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Mock response based on user query
-      final response = _getMockResponse(message);
-      
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      bool isBackendAvailable = false;
+      try {
+        isBackendAvailable = await apiService.chatService.isBackendAvailable();
+      } catch (e) {
+        isBackendAvailable = false;
+      }
+      String response;
+      if (isBackendAvailable) {
+        response = await apiService.chatService.sendMessage(_messages);
+      } else {
+        response = 'The AI service is currently unavailable. Please check your connection or try again later.';
+      }
       _addMessage(response, MessageType.ai);
-    } catch (e) {
-      _addMessage(
-        'Sorry, I encountered an error while processing your request. Please try again.',
-        MessageType.ai,
-      );
+      // Show error as snackbar if response indicates a failure
+      if (response.toLowerCase().contains('error') ||
+          response.toLowerCase().contains('unavailable') ||
+          response.toLowerCase().contains('timed out') ||
+          response.toLowerCase().contains('no internet')) {
+        if (mounted) {
+          ErrorHandler.showErrorSnackBar(
+            context,
+            response,
+            severity: ErrorSeverity.high,
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      ErrorHandler.logError('AIChatScreen', e, stackTrace);
+      final errorMsg = 'Sorry, an unexpected error occurred while processing your request. Please try again.';
+      _addMessage(errorMsg, MessageType.ai);
+      if (mounted) {
+        ErrorHandler.showErrorSnackBar(
+          context,
+          errorMsg,
+          severity: ErrorSeverity.high,
+        );
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -123,7 +151,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     await _voiceService.startListening((result) {
       setState(() {
         _isListening = false;
-        _messageController.text = result;
+        _messageController.text = result as String;
       });
     });
   }

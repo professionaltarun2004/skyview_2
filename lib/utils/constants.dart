@@ -1,5 +1,8 @@
 class AppConstants {
   // API Endpoints
+  // For Android emulator use: 'http://10.0.2.2:8000'
+  // For real device on same WiFi as backend, use: 'http://<YOUR_PC_IP>:8000'
+  // For production, use your deployed backend URL
   static const String apiBaseUrl = 'http://10.0.2.2:8000';
   static const String chatEndpoint = '/chat';
   static const String healthEndpoint = '/health';

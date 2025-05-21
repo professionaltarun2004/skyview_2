@@ -50,6 +50,7 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
       Flight(
         id: '1',
         airline: 'Indigo Airlines',
+        airlineName: 'Indigo Airlines',
         flightNumber: 'IG 2453',
         departureCity: widget.from,
         arrivalCity: widget.to,
@@ -63,10 +64,13 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
         availableSeats: 43,
         amenities: ['Meal', 'WiFi', 'Entertainment'],
         duration: const Duration(hours: 2, minutes: 30),
+        travelClasses: ['Economy', 'Business'],
+        status: 'On Time',
       ),
       Flight(
         id: '2',
         airline: 'Air India',
+        airlineName: 'Air India',
         flightNumber: 'AI 873',
         departureCity: widget.from,
         arrivalCity: widget.to,
@@ -80,10 +84,13 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
         availableSeats: 21,
         amenities: ['Meal', 'WiFi', 'Entertainment', 'Power Outlets'],
         duration: const Duration(hours: 2, minutes: 45),
+        travelClasses: ['Economy', 'Business', 'First'],
+        status: 'Delayed',
       ),
       Flight(
         id: '3',
         airline: 'SpiceJet',
+        airlineName: 'SpiceJet',
         flightNumber: 'SJ 4302',
         departureCity: widget.from,
         arrivalCity: widget.to,
@@ -97,6 +104,8 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
         availableSeats: 12,
         amenities: ['Meal'],
         duration: const Duration(hours: 2, minutes: 15),
+        travelClasses: ['Economy'],
+        status: 'On Time',
       ),
     ];
     
@@ -256,7 +265,7 @@ class _FlightResultsScreenState extends State<FlightResultsScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                flight.airline,
+                flight.airlineName,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                 ),

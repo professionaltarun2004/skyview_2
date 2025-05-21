@@ -3,8 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:skyview_2/models/flight.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
 import 'package:lottie/lottie.dart';
+import 'package:skyview_2/widgets/custom_button.dart';
+import 'package:skyview_2/utils/constants.dart';
+import 'package:skyview_2/utils/extensions.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:skyview_2/services/booking_service.dart';
 
-class BookingConfirmationScreen extends StatelessWidget {
+class BookingConfirmationScreen extends StatefulWidget {
   final Flight flight;
   final int passengers;
   final String travelClass;
@@ -17,6 +23,147 @@ class BookingConfirmationScreen extends StatelessWidget {
     required this.travelClass,
     required this.totalPrice,
   });
+
+  @override
+  State<BookingConfirmationScreen> createState() => _BookingConfirmationScreenState();
+}
+
+class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
+  Razorpay? _razorpay;
+  bool _isPaying = false;
+  bool _paymentSuccess = false;
+  String? _paymentId;
+  String? _paymentMethod;
+  String? _errorMessage;
+  bool _showQR = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay();
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    _razorpay?.clear();
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    setState(() {
+      _isPaying = false;
+      _paymentSuccess = true;
+      _paymentId = response.paymentId;
+      _paymentMethod = 'Razorpay';
+    });
+    await _createBooking();
+    _showFeedbackDialog();
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    setState(() {
+      _isPaying = false;
+      _errorMessage = 'Payment failed. Please try again.';
+    });
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    setState(() {
+      _isPaying = false;
+      _errorMessage = 'External wallet selected.';
+    });
+  }
+
+  void _startRazorpayPayment() {
+    setState(() {
+      _isPaying = true;
+      _errorMessage = null;
+    });
+    var options = {
+      'key': 'rzp_test_1DP5mmOlF5G5ag', // Replace with your Razorpay key
+      'amount': (widget.totalPrice * 100).toInt(),
+      'name': 'SkyView Flights',
+      'description': 'Flight Booking',
+      'prefill': {'contact': '', 'email': ''},
+      'currency': 'INR',
+    };
+    try {
+      _razorpay!.open(options);
+    } catch (e) {
+      setState(() {
+        _isPaying = false;
+        _errorMessage = 'Error starting payment: $e';
+      });
+    }
+  }
+
+  void _showGooglePayQR() {
+    setState(() {
+      _showQR = true;
+      _errorMessage = null;
+    });
+  }
+
+  Future<void> _onGooglePayPaid() async {
+    setState(() {
+      _isPaying = true;
+      _errorMessage = null;
+    });
+    // Simulate payment success for demo
+    await Future.delayed(const Duration(seconds: 2));
+    setState(() {
+      _isPaying = false;
+      _paymentSuccess = true;
+      _paymentId = 'gpay_${DateTime.now().millisecondsSinceEpoch}';
+      _paymentMethod = 'Google Pay';
+    });
+    await _createBooking();
+    _showFeedbackDialog();
+  }
+
+  Future<void> _createBooking() async {
+    await BookingService().createBooking(
+      flight: widget.flight,
+      passengers: widget.passengers,
+      travelClass: widget.travelClass,
+      totalPrice: widget.totalPrice,
+      passengerInfo: {}, // TODO: Pass real passenger info
+      paymentId: _paymentId,
+    );
+  }
+
+  void _showFeedbackDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thank you!'),
+        content: const Text('Would you like to give feedback or take a quick travel quiz to improve your recommendations?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('No, thanks'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // TODO: Navigate to quiz screen
+            },
+            child: const Text('Take Quiz'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // TODO: Show feedback form
+            },
+            child: const Text('Give Feedback'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +188,16 @@ class BookingConfirmationScreen extends StatelessWidget {
             SizedBox(
               height: 150,
               child: Lottie.asset(
-                'assets/animations/success.json',
+                AppConstants.successAnimation,
                 repeat: false,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('Failed to load success animation: $error');
+                  return const Icon(
+                    Icons.check_circle,
+                    size: 80,
+                    color: Colors.green,
+                  );
+                },
               ),
             ),
             
@@ -88,15 +243,15 @@ class BookingConfirmationScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            DateFormat('HH:mm').format(flight.departureTime),
+                            DateFormat('HH:mm').format(widget.flight.departureTime),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(flight.departureCity),
+                          Text(widget.flight.departureCity),
                           Text(
-                            DateFormat('dd MMM yyyy').format(flight.departureTime),
+                            widget.flight.departureTime.toFormattedDate(),
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 12,
@@ -121,15 +276,15 @@ class BookingConfirmationScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            DateFormat('HH:mm').format(flight.arrivalTime),
+                            DateFormat('HH:mm').format(widget.flight.arrivalTime),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(flight.arrivalCity),
+                          Text(widget.flight.arrivalCity),
                           Text(
-                            DateFormat('dd MMM yyyy').format(flight.arrivalTime),
+                            widget.flight.arrivalTime.toFormattedDate(),
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 12,
@@ -146,7 +301,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Airline'),
-                      Text('${flight.airline} (${flight.flightNumber})'),
+                      Text('${widget.flight.airlineName} (${widget.flight.flightNumber})'),
                     ],
                   ),
                   
@@ -156,7 +311,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Class'),
-                      Text(travelClass),
+                      Text(widget.travelClass),
                     ],
                   ),
                   
@@ -166,7 +321,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Passengers'),
-                      Text('$passengers'),
+                      Text('${widget.passengers}'),
                     ],
                   ),
                 ],
@@ -175,57 +330,68 @@ class BookingConfirmationScreen extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Payment details
-            SnapCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Payment step
+            if (!_paymentSuccess) ...[
+              const Text('Choose Payment Method:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                alignment: WrapAlignment.center,
                 children: [
-                  const Text(
-                    'Payment Details',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  ElevatedButton.icon(
+                    onPressed: _isPaying ? null : _startRazorpayPayment,
+                    icon: const Icon(Icons.payment),
+                    label: const Text('Razorpay'),
                   ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Payment Method'),
-                      const Text('Credit Card'),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Amount Paid'),
-                      Text(
-                        formatter.format(totalPrice),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Transaction ID'),
-                      Text('TXN${DateTime.now().millisecondsSinceEpoch.toString().substring(5, 13)}'),
-                    ],
+                  ElevatedButton.icon(
+                    onPressed: _isPaying ? null : _showGooglePayQR,
+                    icon: const Icon(Icons.qr_code),
+                    label: const Text('Google Pay'),
                   ),
                 ],
               ),
-            ),
+              if (_showQR) ...[
+                const SizedBox(height: 16),
+                const Text('Scan this QR with Google Pay to pay:'),
+                Center(
+                  child: QrImageView(
+                    data: 'upi://pay?pa=your-upi-id@okicici&pn=SkyView&am=${widget.totalPrice}&cu=INR',
+                    version: QrVersions.auto,
+                    size: 180.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _isPaying ? null : _onGooglePayPaid,
+                    child: const Text('I have paid'),
+                  ),
+                ),
+              ],
+              if (_isPaying) ...[
+                const SizedBox(height: 16),
+                const Center(child: CircularProgressIndicator()),
+              ],
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ] else ...[
+              const SizedBox(height: 24),
+              const Center(
+                child: Text(
+                  'Payment successful! Your booking is confirmed.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             
             const SizedBox(height: 24),
             
@@ -253,29 +419,43 @@ class BookingConfirmationScreen extends StatelessWidget {
                   
                   const SizedBox(height: 8),
                   
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text('Name'),
-                      Text('John Doe'),
+                      const Text('Name:'),
+                      Text(
+                        'John Doe',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ],
                   ),
                   
                   const SizedBox(height: 8),
                   
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text('Email'),
-                      Text('john.doe@example.com'),
+                      const Text('Email:'),
+                      Text(
+                        'john.doe@example.com',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                     ],
                   ),
                   
-                  if (passengers > 1) ...[
+                  if (widget.passengers > 1) ...[
                     const Divider(height: 24),
                     
                     Text(
-                      'Additional Passengers (${passengers - 1})',
+                      'Additional Passengers (${widget.passengers - 1})',
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
                       ),
@@ -288,10 +468,17 @@ class BookingConfirmationScreen extends StatelessWidget {
             const SizedBox(height: 32),
             
             // Action buttons
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              alignment: WrapAlignment.center,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: CustomButton(
+                    text: 'Share',
+                    icon: Icons.share,
+                    type: ButtonType.secondary,
                     onPressed: () {
                       // TODO: Implement share functionality
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,16 +487,14 @@ class BookingConfirmationScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.share),
-                    label: const Text('Share'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: CustomButton(
+                    text: 'E-ticket',
+                    icon: Icons.download,
+                    type: ButtonType.primary,
                     onPressed: () {
                       // TODO: Implement download functionality
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -318,11 +503,6 @@ class BookingConfirmationScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.download),
-                    label: const Text('E-ticket'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
                   ),
                 ),
               ],
@@ -330,17 +510,13 @@ class BookingConfirmationScreen extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            ElevatedButton.icon(
+            CustomButton(
+              text: 'Back to Home',
+              icon: Icons.home,
+              fullWidth: true,
               onPressed: () {
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
-              icon: const Icon(Icons.home),
-              label: const Text('Back to Home'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.grey[800],
-                foregroundColor: Colors.white,
-              ),
             ),
             
             const SizedBox(height: 32),

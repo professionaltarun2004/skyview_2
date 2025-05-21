@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:skyview_2/providers/auth_provider.dart';
 import 'package:skyview_2/screens/home_screen.dart';
 import 'package:skyview_2/widgets/snap_card.dart';
+import 'package:skyview_2/utils/error_handler.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,22 +28,29 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     if (_formKey.currentState!.validate()) {
       try {
-        await Provider.of<AuthProvider>(context, listen: false)
-            .signInWithEmailAndPassword(
+        final result = await Provider.of<AuthProvider>(context, listen: false)
+            .signIn(
           _emailController.text.trim(),
           _passwordController.text,
         );
         
         if (!mounted) return;
         
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        if (result['success']) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Login failed')),
+          );
+        }
       } catch (e) {
         if (!mounted) return;
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+        ErrorHandler.showErrorSnackBar(
+          context, 
+          ErrorHandler.getUserFriendlyError(e),
         );
       }
     }

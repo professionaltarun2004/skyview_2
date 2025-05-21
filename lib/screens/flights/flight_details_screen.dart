@@ -60,7 +60,7 @@ class _FlightDetailsScreenState extends State<FlightDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                widget.flight.airline,
+                                widget.flight.airlineName,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
