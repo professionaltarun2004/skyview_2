@@ -47,32 +47,35 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBQFax_tjTu0AQLoZIymJPe9U_JwF1QaIE',
+    apiKey: '',
     appId: '1:46361936475:web:08c4860078938cd751f57e',
     messagingSenderId: '46361936475',
     projectId: 'joystick-dc535',
     authDomain: 'joystick-dc535.firebaseapp.com',
-    databaseURL: 'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'joystick-dc535.firebasestorage.app',
     measurementId: 'G-Q4JRVBQTGE',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAzgHCPuRoWu1LeUqSJuueyzrrsb3BbSAw',
+    apiKey: '',
     appId: '1:46361936475:android:7d3aa68ce954307c51f57e',
     messagingSenderId: '46361936475',
     projectId: 'joystick-dc535',
-    databaseURL: 'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'joystick-dc535.firebasestorage.app',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBQFax_tjTu0AQLoZIymJPe9U_JwF1QaIE',
+    apiKey: '',
     appId: '1:46361936475:web:fadbc81863034c4851f57e',
     messagingSenderId: '46361936475',
     projectId: 'joystick-dc535',
     authDomain: 'joystick-dc535.firebaseapp.com',
-    databaseURL: 'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://joystick-dc535-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'joystick-dc535.firebasestorage.app',
     measurementId: 'G-KPQTDJNNJ5',
   );
